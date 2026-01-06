@@ -37,7 +37,20 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## Usage
 
-Navigate to your project directory and run:
+### Initializing a Project
+
+For a new project, run `--init` to set up the Dockerfile:
+
+```bash
+cd /path/to/your/project
+jail --init
+```
+
+This creates a `Dockerfile.jail` in your project directory that you can customize with your project's dependencies.
+
+### Running the Sandbox
+
+Once initialized (or on first run), start the sandbox:
 
 ```bash
 jail
