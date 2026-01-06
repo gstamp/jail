@@ -1,5 +1,8 @@
 FROM ubuntu:latest
 
+# This project is a Docker sandbox for running opencode safely in an isolated container.
+# It's designed to be modified to add project-specific dependencies.
+
 # Install essential tools
 RUN apt-get update && \
     apt-get install -y \
