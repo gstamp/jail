@@ -2,15 +2,189 @@ FROM ubuntu:latest
 
 # This project is a Docker sandbox for running opencode safely in an isolated container.
 # It's designed to be modified to add project-specific dependencies.
+# Uncomment the sections below to add the tools you need.
 
 # Install essential tools
+# Note: If you uncomment Python or jq below, add them here instead to avoid multiple apt-get updates
 RUN apt-get update && \
     apt-get install -y \
     git \
     curl \
+    wget \
     ca-certificates \
     bash \
+    build-essential \
+    unzip \
+    # Uncomment for Python development:
+    # python3 python3-pip python3-venv python3-dev \
+    # Uncomment for jq:
+    # jq \
     && rm -rf /var/lib/apt/lists/*
+
+# =============================================================================
+# DEVELOPMENT ENVIRONMENTS
+# Uncomment the sections you need
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TypeScript/JavaScript Development (Node.js, Bun, pnpm, yarn)
+# -----------------------------------------------------------------------------
+# # Install Node.js (LTS) - nodesource script adds repo and runs apt-get update
+# RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+#     apt-get install -y nodejs && \
+#     rm -rf /var/lib/apt/lists/*
+#
+# # Install pnpm
+# RUN npm install -g pnpm
+#
+# # Install yarn
+# RUN npm install -g yarn
+#
+# # Install TypeScript globally
+# RUN npm install -g typescript ts-node
+#
+# # Install Bun
+# RUN curl -fsSL https://bun.sh/install | bash
+# ENV PATH="/root/.bun/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# Go Development
+# -----------------------------------------------------------------------------
+# ENV GO_VERSION=1.25.5
+# RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" | tar -C /usr/local -xzf -
+# ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
+# ENV GOPATH="/root/go"
+#
+# # Install standard Go tools
+# RUN go install golang.org/x/tools/gopls@latest && \
+#     go install github.com/go-delve/delve/cmd/dlv@latest && \
+#     go install golang.org/x/tools/cmd/goimports@latest && \
+#     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+#     go install github.com/fatih/gomodifytags@latest && \
+#     go install github.com/cweill/gotests/gotests@latest && \
+#     go install github.com/josharian/impl@latest && \
+#     go install honnef.co/go/tools/cmd/staticcheck@latest
+
+# -----------------------------------------------------------------------------
+# Rust Development
+# -----------------------------------------------------------------------------
+# RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+# ENV PATH="/root/.cargo/bin:$PATH"
+#
+# # Install common Rust tools
+# RUN rustup component add rustfmt clippy && \
+#     cargo install cargo-watch cargo-edit cargo-audit
+
+# -----------------------------------------------------------------------------
+# Python Development
+# -----------------------------------------------------------------------------
+# Note: Uncomment python3 packages in the apt-get section above, then uncomment below:
+#
+# # Install uv (fast Python package manager)
+# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# ENV PATH="/root/.local/bin:$PATH"
+#
+# # Install common Python tools
+# RUN pip3 install --break-system-packages \
+#     ruff \
+#     mypy \
+#     black \
+#     isort \
+#     pytest \
+#     ipython
+
+# =============================================================================
+# UTILITY TOOLS
+# Uncomment the tools you need
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# mise (polyglot runtime manager - manages Node, Python, Go, etc.)
+# -----------------------------------------------------------------------------
+# RUN curl https://mise.run | sh
+# ENV PATH="/root/.local/bin:$PATH"
+# # Example: mise install node@lts python@3.12 go@latest
+
+# -----------------------------------------------------------------------------
+# nvm (Node Version Manager)
+# -----------------------------------------------------------------------------
+# ENV NVM_DIR="/root/.nvm"
+# RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
+#     . "$NVM_DIR/nvm.sh" && \
+#     nvm install --lts
+# # Add to bashrc for interactive shells
+# RUN echo 'export NVM_DIR="/root/.nvm"' >> /root/.bashrc && \
+#     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /root/.bashrc
+
+# -----------------------------------------------------------------------------
+# just (command runner, like make but better)
+# -----------------------------------------------------------------------------
+# RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+# -----------------------------------------------------------------------------
+# ripgrep (fast grep alternative)
+# -----------------------------------------------------------------------------
+# RUN curl -LO https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep_14.1.1-1_amd64.deb && \
+#     dpkg -i ripgrep_14.1.1-1_amd64.deb && \
+#     rm ripgrep_14.1.1-1_amd64.deb
+
+# -----------------------------------------------------------------------------
+# fd (fast find alternative)
+# -----------------------------------------------------------------------------
+# RUN curl -LO https://github.com/sharkdp/fd/releases/download/v10.3.0/fd_10.3.0_amd64.deb && \
+#     dpkg -i fd_10.3.0_amd64.deb && \
+#     rm fd_10.3.0_amd64.deb
+
+# -----------------------------------------------------------------------------
+# fzf (fuzzy finder)
+# -----------------------------------------------------------------------------
+# RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf && \
+#     /root/.fzf/install --all
+
+# -----------------------------------------------------------------------------
+# bat (cat with syntax highlighting)
+# -----------------------------------------------------------------------------
+# RUN curl -LO https://github.com/sharkdp/bat/releases/download/v0.26.1/bat_0.26.1_amd64.deb && \
+#     dpkg -i bat_0.26.1_amd64.deb && \
+#     rm bat_0.26.1_amd64.deb
+
+# -----------------------------------------------------------------------------
+# jq (JSON processor)
+# -----------------------------------------------------------------------------
+# Note: Uncomment jq in the apt-get section above
+
+# -----------------------------------------------------------------------------
+# yq (YAML processor)
+# -----------------------------------------------------------------------------
+# RUN curl -LO https://github.com/mikefarah/yq/releases/download/v4.50.1/yq_linux_amd64 && \
+#     chmod +x yq_linux_amd64 && \
+#     mv yq_linux_amd64 /usr/local/bin/yq
+
+# -----------------------------------------------------------------------------
+# lazygit (terminal UI for git)
+# -----------------------------------------------------------------------------
+# RUN LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*') && \
+#     curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" && \
+#     tar xf lazygit.tar.gz lazygit && \
+#     install lazygit /usr/local/bin && \
+#     rm lazygit lazygit.tar.gz
+
+# -----------------------------------------------------------------------------
+# gh (GitHub CLI) - requires apt-get update for external repo
+# -----------------------------------------------------------------------------
+# RUN (type -p wget >/dev/null || (apt-get update && apt-get install wget -y)) \
+#     && mkdir -p -m 755 /etc/apt/keyrings \
+#     && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+#     && cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+#     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+#     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+#     && apt-get update \
+#     && apt-get install gh -y \
+#     && rm -rf /var/lib/apt/lists/*
+
+# =============================================================================
+# OPENCODE INSTALLATION
+# =============================================================================
 
 # Install opencode via curl script
 RUN curl -fsSL https://opencode.ai/install | bash
