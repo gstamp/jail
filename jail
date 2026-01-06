@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Docker sandbox script for running opencode safely
-# Mounts project directory and copies opencode config with permissive permissions
+# Mounts project directory and opencode config with permissive permissions override
 
 DOCKERFILE="Dockerfile.jail"
 # Resolve symlinks to find the actual script directory
@@ -16,7 +16,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 PROJECT_DIR="$(pwd)"
 CONFIG_DIR="${HOME}/.config/opencode"
-TEMP_CONFIG_DIR=""
+JAIL_PERMISSIONS="${SCRIPT_DIR}/jail-permissions.json"
 
 # Generate project-specific image name based on project directory hash
 PROJECT_HASH=$(echo -n "${PROJECT_DIR}" | md5sum | cut -c1-12)
@@ -93,24 +93,24 @@ fi
 # Handle --cleanup flag
 if [[ "${1:-}" == "--cleanup" ]]; then
     echo -e "${YELLOW}Searching for opencode-jail images...${NC}"
-    
+
     # Find all opencode-jail images
     IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^opencode-jail-" || true)
-    
+
     if [[ -z "${IMAGES}" ]]; then
         echo -e "${GREEN}No opencode-jail images found.${NC}"
         exit 0
     fi
-    
+
     echo -e "${YELLOW}Found the following images:${NC}"
     echo "${IMAGES}"
     echo ""
-    
+
     # Count images
     IMAGE_COUNT=$(echo "${IMAGES}" | wc -l)
     echo -e "${YELLOW}Total images to remove: ${IMAGE_COUNT}${NC}"
     echo ""
-    
+
     # Ask for confirmation
     read -p "Do you want to remove all these images? (y/N): " -n 1 -r
     echo ""
@@ -142,54 +142,11 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-# Create temporary config directory with permissive permissions
-TEMP_CONFIG_DIR=$(mktemp -d)
-trap 'rm -rf "${TEMP_CONFIG_DIR}"' EXIT INT TERM
-
-# Copy existing config if it exists
-if [[ -d "${CONFIG_DIR}" ]]; then
-    echo -e "${YELLOW}Copying opencode config...${NC}"
-    cp -r "${CONFIG_DIR}"/* "${TEMP_CONFIG_DIR}/" 2>/dev/null || true
-fi
-
-# Create or update opencode.json with permissive permissions
-CONFIG_FILE="${TEMP_CONFIG_DIR}/opencode.json"
-
-# If config file exists, try to merge permissions; otherwise create new
-if [[ -f "${CONFIG_FILE}" ]]; then
-    # Use jq if available to merge, otherwise create new with permissions
-    if command -v jq &> /dev/null; then
-        jq '.permission = {"bash": {"*": "allow"}}' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && \
-        mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
-    else
-        # Fallback: create new config with permissions (preserving other keys if possible)
-        echo -e "${YELLOW}Note: jq not found, creating new config with permissive permissions${NC}"
-        cat > "${CONFIG_FILE}" <<'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "bash": {
-      "*": "allow"
-    }
-  }
-}
-EOF
-    fi
-else
-    # Create new config file with permissive permissions
-    cat > "${CONFIG_FILE}" <<'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "bash": {
-      "*": "allow"
-    }
-  }
-}
-EOF
-fi
+# Ensure config directory exists for session persistence
+mkdir -p "${CONFIG_DIR}"
 
 echo -e "${GREEN}Using permissive permissions in sandbox${NC}"
+echo -e "${GREEN}Session history will persist in ${CONFIG_DIR}${NC}"
 echo -e "${YELLOW}Project hash: ${PROJECT_HASH}${NC}"
 echo -e "${YELLOW}Image name: ${IMAGE_NAME}${NC}"
 
@@ -264,14 +221,16 @@ fi
 # Run container with mounts
 echo -e "${GREEN}Starting Docker sandbox...${NC}"
 echo -e "${YELLOW}Project: ${PROJECT_DIR}${NC}"
-echo -e "${YELLOW}Config: ${TEMP_CONFIG_DIR} (copied with permissive permissions)${NC}"
+echo -e "${YELLOW}Config: ${CONFIG_DIR} (persistent)${NC}"
 echo -e "${YELLOW}Command: ${CMD[*]}${NC}"
 echo ""
 
 docker run --rm -it \
     --network host \
     -v "${PROJECT_DIR}:/workspace" \
-    -v "${TEMP_CONFIG_DIR}:/root/.config/opencode" \
+    -v "${CONFIG_DIR}:/root/.config/opencode" \
+    -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+    -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
     -w /workspace \
     "${ENV_VARS[@]}" \
     "${IMAGE_NAME}" \

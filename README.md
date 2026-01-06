@@ -9,12 +9,11 @@ A Docker sandbox script for running [opencode](https://opencode.ai) safely in an
 - **Isolation**: Your system is protected from potentially destructive commands
 - **Permissive sandbox**: Commands run without confirmation prompts inside the container
 - **Project mounting**: Your current directory is mounted at `/workspace`
-- **Config preservation**: Your opencode config is copied with permissive permissions
+- **Session persistence**: Your opencode config and conversation history persist across sessions
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running
-- (Optional) [jq](https://jqlang.github.io/jq/) for merging existing config files
 
 ## Installation
 
@@ -79,8 +78,10 @@ jail opencode "fix the bug in main.go"
 
 1. **First run in a project**: If no `Dockerfile.jail` exists in the current directory, the default one is copied there
 2. **Image building**: A Docker image (`opencode-jail`) is built from `Dockerfile.jail`
-3. **Config setup**: Your `~/.config/opencode` is copied to a temp directory with permissive bash permissions
+3. **Config setup**: Your `~/.config/opencode` is mounted directly (session history persists!) with a permissive permissions override via `OPENCODE_CONFIG`
 4. **Container execution**: opencode runs with your project mounted at `/workspace`
+
+**Session Persistence**: Your opencode conversation history and settings are stored in `~/.config/opencode` and persist across jail sessions. The permissive permissions are applied via OpenCode's [config merging](https://opencode.ai/docs/config/) feature without modifying your original config.
 
 ## Customizing the Dockerfile
 
