@@ -1,0 +1,23 @@
+FROM ubuntu:latest
+
+# Install essential tools
+RUN apt-get update && \
+    apt-get install -y \
+    git \
+    curl \
+    ca-certificates \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install opencode via curl script
+RUN curl -fsSL https://opencode.ai/install | bash
+
+# Add opencode to PATH
+ENV PATH="/root/.opencode/bin:$PATH"
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command (will be overridden by jail script)
+CMD ["/bin/bash"]
+

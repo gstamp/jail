@@ -1,0 +1,121 @@
+# jail
+
+A Docker sandbox script for running [opencode](https://opencode.ai) safely in an isolated container.
+
+## Overview
+
+`jail` runs opencode inside a Docker container, providing:
+
+- **Isolation**: Your system is protected from potentially destructive commands
+- **Permissive sandbox**: Commands run without confirmation prompts inside the container
+- **Project mounting**: Your current directory is mounted at `/workspace`
+- **Config preservation**: Your opencode config is copied with permissive permissions
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed and running
+- (Optional) [jq](https://jqlang.github.io/jq/) for merging existing config files
+
+## Installation
+
+Create a symlink to add `jail` to your PATH:
+
+```bash
+# Using /usr/local/bin (requires sudo)
+sudo ln -s /path/to/jail/jail /usr/local/bin/jail
+
+# Or using ~/.local/bin (no sudo needed)
+mkdir -p ~/.local/bin
+ln -s /path/to/jail/jail ~/.local/bin/jail
+```
+
+If using `~/.local/bin`, ensure it's in your PATH by adding to `~/.zshrc` or `~/.bashrc`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## Usage
+
+Navigate to your project directory and run:
+
+```bash
+jail
+```
+
+This starts opencode in the sandbox by default.
+
+### Running Other Commands
+
+You can run any command inside the sandbox:
+
+```bash
+# Start an interactive shell
+jail bash
+
+# Run a specific command
+jail npm install
+jail make test
+
+# Run opencode with arguments
+jail opencode --help
+jail opencode "fix the bug in main.go"
+```
+
+## How It Works
+
+1. **First run in a project**: If no `Dockerfile.jail` exists in the current directory, the default one is copied there
+2. **Image building**: A Docker image (`opencode-jail`) is built from `Dockerfile.jail`
+3. **Config setup**: Your `~/.config/opencode` is copied to a temp directory with permissive bash permissions
+4. **Container execution**: opencode runs with your project mounted at `/workspace`
+
+## Customizing the Dockerfile
+
+The `Dockerfile.jail` in your project directory can be customized to include project-specific dependencies:
+
+```dockerfile
+FROM ubuntu:latest
+
+# Install essential tools
+RUN apt-get update && \
+    apt-get install -y \
+    git \
+    curl \
+    ca-certificates \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add your project dependencies here, e.g.:
+# RUN apt-get update && apt-get install -y nodejs npm
+
+# Install opencode via curl script
+RUN curl -fsSL https://opencode.ai/install | bash
+
+# Add opencode to PATH
+ENV PATH="/root/.opencode/bin:$PATH"
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
+```
+
+After modifying `Dockerfile.jail`, rebuild the image:
+
+```bash
+docker rmi opencode-jail
+jail
+```
+
+## Environment Variables
+
+The following environment variables are passed through to the container if set:
+
+| Variable | Description |
+|----------|-------------|
+| `OPENROUTER_API_KEY` | API key for OpenRouter |
+| `OPENROUTER_MODEL` | Model to use with OpenRouter |
+| `JIRA_API_TOKEN` | Jira API token for integrations |
+
+## License
+
+MIT
+
