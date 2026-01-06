@@ -138,10 +138,29 @@ if [[ ! -f "${LOCAL_DOCKERFILE}" ]]; then
     echo ""
 fi
 
-# Build image using local Dockerfile
-# Note: To force a rebuild after modifying Dockerfile, delete the image first:
-#   docker rmi ${IMAGE_NAME}
+# Build image using local Dockerfile if it doesn't exist or Dockerfile has changed
+NEEDS_BUILD=false
+
 if ! docker image inspect "${IMAGE_NAME}" &> /dev/null; then
+    NEEDS_BUILD=true
+else
+    # Get image creation timestamp (seconds since epoch)
+    IMAGE_CREATED=$(docker image inspect "${IMAGE_NAME}" --format '{{.Created}}')
+    # Parse timestamp - try macOS format first, then Linux
+    IMAGE_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${IMAGE_CREATED:0:19}" +%s 2>/dev/null || \
+                  date -d "${IMAGE_CREATED}" +%s 2>/dev/null)
+
+    # Get Dockerfile modification timestamp (macOS uses -f, Linux uses -c)
+    DOCKERFILE_EPOCH=$(stat -f %m "${LOCAL_DOCKERFILE}" 2>/dev/null || \
+                       stat -c %Y "${LOCAL_DOCKERFILE}" 2>/dev/null)
+
+    if [[ "${DOCKERFILE_EPOCH}" -gt "${IMAGE_EPOCH}" ]]; then
+        echo -e "${YELLOW}${DOCKERFILE} has been modified since image was built. Rebuilding...${NC}"
+        NEEDS_BUILD=true
+    fi
+fi
+
+if [[ "${NEEDS_BUILD}" == "true" ]]; then
     echo -e "${GREEN}Building Docker image: ${IMAGE_NAME}${NC}"
     docker build -f "${LOCAL_DOCKERFILE}" -t "${IMAGE_NAME}" "${PROJECT_DIR}" || {
         echo -e "${RED}Failed to build Docker image${NC}" >&2
