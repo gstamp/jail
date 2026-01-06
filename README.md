@@ -81,7 +81,7 @@ jail opencode "fix the bug in main.go"
 3. **Config setup**: Your `~/.config/opencode` is mounted directly (session history persists!) with a permissive permissions override via `OPENCODE_CONFIG`
 4. **Container execution**: opencode runs with your project mounted at `/workspace`
 
-**Session Persistence**: Your opencode conversation history and settings are stored in `~/.config/opencode` and persist across jail sessions. The permissive permissions are applied via OpenCode's [config merging](https://opencode.ai/docs/config/) feature without modifying your original config.
+**Session Persistence**: Your opencode conversation history is stored in `~/.local/share/opencode` and persists across jail sessions. Your settings in `~/.config/opencode` are also preserved. The permissive permissions are applied via OpenCode's [config merging](https://opencode.ai/docs/config/) feature without modifying your original config.
 
 ## Customizing the Dockerfile
 

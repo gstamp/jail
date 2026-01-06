@@ -16,6 +16,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 PROJECT_DIR="$(pwd)"
 CONFIG_DIR="${HOME}/.config/opencode"
+DATA_DIR="${HOME}/.local/share/opencode"
 JAIL_PERMISSIONS="${SCRIPT_DIR}/jail-permissions.json"
 
 # Generate project-specific image name based on project directory hash
@@ -142,11 +143,12 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-# Ensure config directory exists for session persistence
+# Ensure config and data directories exist for session persistence
 mkdir -p "${CONFIG_DIR}"
+mkdir -p "${DATA_DIR}"
 
 echo -e "${GREEN}Using permissive permissions in sandbox${NC}"
-echo -e "${GREEN}Session history will persist in ${CONFIG_DIR}${NC}"
+echo -e "${GREEN}Session history will persist in ${DATA_DIR}${NC}"
 echo -e "${YELLOW}Project hash: ${PROJECT_HASH}${NC}"
 echo -e "${YELLOW}Image name: ${IMAGE_NAME}${NC}"
 
@@ -229,6 +231,7 @@ docker run --rm -it \
     --network host \
     -v "${PROJECT_DIR}:/workspace" \
     -v "${CONFIG_DIR}:/root/.config/opencode" \
+    -v "${DATA_DIR}:/root/.local/share/opencode" \
     -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
     -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
     -w /workspace \
