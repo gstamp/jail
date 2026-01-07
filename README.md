@@ -79,7 +79,8 @@ jail opencode "fix the bug in main.go"
 1. **First run in a project**: If no `Dockerfile.jail` exists in the current directory, the default one is copied there
 2. **Image building**: A Docker image (`opencode-jail`) is built from `Dockerfile.jail`
 3. **Config setup**: Your `~/.config/opencode` is mounted directly (session history persists!) with a permissive permissions override via `OPENCODE_CONFIG`
-4. **Container execution**: opencode runs with your project mounted at `/workspace`
+4. **Git config**: Your `~/.gitconfig` is mounted read-only for access to global git settings (user name, email, aliases, etc.)
+5. **Container execution**: opencode runs with your project mounted at `/workspace`
 
 **Session Persistence**: Your opencode conversation history is stored in `~/.local/share/opencode` and persists across jail sessions. Your settings in `~/.config/opencode` are also preserved. The permissive permissions are applied via OpenCode's [config merging](https://opencode.ai/docs/config/) feature without modifying your original config.
 
@@ -128,6 +129,18 @@ The following environment variables are passed through to the container if set:
 | `OPENROUTER_API_KEY` | API key for OpenRouter |
 | `OPENROUTER_MODEL` | Model to use with OpenRouter |
 | `JIRA_API_TOKEN` | Jira API token for integrations |
+
+## Mounted Files
+
+The following host files are mounted into the sandbox container:
+
+| Host Path | Container Path | Access | Purpose |
+|-----------|----------------|--------|---------|
+| `~/` (current project) | `/workspace` | Read/Write | Your project files |
+| `~/.config/opencode` | `/root/.config/opencode` | Read/Write | opencode configuration & session history |
+| `~/.local/share/opencode` | `/root/.local/share/opencode` | Read/Write | opencode conversation history |
+| `~/.gitconfig` | `/root/.gitconfig` | Read-Only | Global git configuration (user, email, aliases) |
+| `jail-permissions.json` | `/tmp/jail-permissions.json` | Read-Only | Permissive permissions override |
 
 ## License
 
