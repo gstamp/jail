@@ -40,10 +40,14 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
     echo "  --cleanup       Remove all opencode-jail images"
     echo "  --help, -h      Show this help message"
     echo ""
+    echo "Commands:"
+    echo "  web             Start the opencode web UI (see 'jail web --help')"
+    echo ""
     echo "Examples:"
     echo "  jail                    # Run opencode with project-specific image"
     echo "  jail --init             # Initialize Dockerfile for this project"
     echo "  jail --cleanup          # Remove all generated images"
+    echo "  jail web                # Start the web UI on localhost:7500"
     echo "  jail echo 'hello'       # Run custom command in sandbox"
     exit 0
 fi
@@ -129,6 +133,238 @@ if [[ "${1:-}" == "--cleanup" ]]; then
         echo -e "${YELLOW}Cleanup cancelled.${NC}"
     fi
     exit 0
+fi
+
+# Handle 'web' subcommand
+if [[ "${1:-}" == "web" ]]; then
+    shift  # Remove 'web' from arguments
+
+    # Handle web --help
+    if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+        echo "Usage: jail web [OPTIONS] [-- OPENCODE_ARGS...]"
+        echo ""
+        echo "Start the opencode web UI in a Docker sandbox"
+        echo ""
+        echo "Options:"
+        echo "  --port PORT     Preferred starting port (default: 7500)"
+        echo "  --public        Expose to network (0.0.0.0) instead of localhost only"
+        echo "  --detached      Run in background and print URL + stop command"
+        echo "  --help, -h      Show this help message"
+        echo ""
+        echo "Port Selection:"
+        echo "  The web server will try to use the preferred port (default 7500)."
+        echo "  If that port is busy, it will automatically try the next port."
+        echo ""
+        echo "Examples:"
+        echo "  jail web                    # Start on localhost:7500 (foreground)"
+        echo "  jail web --port 8080        # Start on localhost:8080"
+        echo "  jail web --public           # Expose to network"
+        echo "  jail web --detached         # Run in background"
+        echo "  jail web -- --print-logs    # Pass args to opencode web"
+        exit 0
+    fi
+
+    # Parse web subcommand options
+    WEB_PORT=7500
+    WEB_PUBLIC=false
+    WEB_DETACHED=false
+    OPENCODE_ARGS=()
+
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            --port)
+                WEB_PORT="${2}"
+                shift 2
+                ;;
+            --public)
+                WEB_PUBLIC=true
+                shift
+                ;;
+            --detached)
+                WEB_DETACHED=true
+                shift
+                ;;
+            --)
+                shift
+                OPENCODE_ARGS=("$@")
+                break
+                ;;
+            *)
+                OPENCODE_ARGS+=("${1}")
+                shift
+                ;;
+        esac
+    done
+
+    # Check if Docker is available
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Error: docker is not installed or not in PATH${NC}" >&2
+        exit 1
+    fi
+
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        echo -e "${RED}Error: Docker daemon is not running${NC}" >&2
+        exit 1
+    fi
+
+    # Ensure config and data directories exist for session persistence
+    mkdir -p "${CONFIG_DIR}"
+    mkdir -p "${DATA_DIR}"
+
+    # Check for Dockerfile.jail in current directory, copy default if missing
+    LOCAL_DOCKERFILE="${PROJECT_DIR}/${DOCKERFILE}"
+    DEFAULT_DOCKERFILE="${SCRIPT_DIR}/${DOCKERFILE}"
+
+    if [[ ! -f "${LOCAL_DOCKERFILE}" ]]; then
+        echo -e "${YELLOW}No ${DOCKERFILE} found in current directory.${NC}"
+        echo -e "${GREEN}Copying default ${DOCKERFILE} to ${PROJECT_DIR}${NC}"
+        cp "${DEFAULT_DOCKERFILE}" "${LOCAL_DOCKERFILE}"
+        echo -e "${YELLOW}Please update ${DOCKERFILE} to include any dependencies needed for your project.${NC}"
+        echo ""
+    fi
+
+    # Build image if needed
+    NEEDS_BUILD=false
+
+    if ! docker image inspect "${IMAGE_NAME}" &> /dev/null; then
+        NEEDS_BUILD=true
+    else
+        IMAGE_CREATED=$(docker image inspect "${IMAGE_NAME}" --format '{{.Created}}')
+        IMAGE_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${IMAGE_CREATED:0:19}" +%s 2>/dev/null || \
+                      date -d "${IMAGE_CREATED}" +%s 2>/dev/null || echo "0")
+        IMAGE_EPOCH=${IMAGE_EPOCH:-0}
+        [[ "${IMAGE_EPOCH}" =~ ^[0-9]+$ ]] || IMAGE_EPOCH=0
+
+        DOCKERFILE_EPOCH=$(stat -c %Y "${LOCAL_DOCKERFILE}" 2>/dev/null || \
+                           stat -f %m "${LOCAL_DOCKERFILE}" 2>/dev/null || echo "0")
+        DOCKERFILE_EPOCH=${DOCKERFILE_EPOCH:-0}
+        [[ "${DOCKERFILE_EPOCH}" =~ ^[0-9]+$ ]] || DOCKERFILE_EPOCH=0
+
+        if [[ "${DOCKERFILE_EPOCH}" -gt "${IMAGE_EPOCH}" ]]; then
+            echo -e "${YELLOW}${DOCKERFILE} has been modified since image was built. Rebuilding...${NC}"
+            NEEDS_BUILD=true
+        fi
+    fi
+
+    if [[ "${NEEDS_BUILD}" == "true" ]]; then
+        echo -e "${GREEN}Building project-specific Docker image: ${IMAGE_NAME}${NC}"
+        docker build -f "${LOCAL_DOCKERFILE}" -t "${IMAGE_NAME}" "${PROJECT_DIR}" || {
+            echo -e "${RED}Failed to build Docker image${NC}" >&2
+            exit 1
+        }
+    fi
+
+    # Collect environment variables to pass through
+    ENV_VARS=()
+    if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+        ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
+    if [[ -n "${OPENROUTER_MODEL:-}" ]]; then
+        ENV_VARS+=(-e "OPENROUTER_MODEL=${OPENROUTER_MODEL}")
+    fi
+    if [[ -n "${JIRA_API_TOKEN:-}" ]]; then
+        ENV_VARS+=(-e "JIRA_API_TOKEN=${JIRA_API_TOKEN}")
+    fi
+
+    # Determine bind address for Docker port publishing
+    if [[ "${WEB_PUBLIC}" == "true" ]]; then
+        BIND_ADDR="0.0.0.0"
+    else
+        BIND_ADDR="127.0.0.1"
+    fi
+
+    # Try to start the web server, auto-bumping port on conflict
+    MAX_PORT_ATTEMPTS=100
+    CURRENT_PORT="${WEB_PORT}"
+
+    for ((attempt=0; attempt<MAX_PORT_ATTEMPTS; attempt++)); do
+        CONTAINER_NAME="opencode-jail-web-${PROJECT_HASH}-${CURRENT_PORT}"
+
+        # Check if container with this name already exists (running or stopped)
+        if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            echo -e "${YELLOW}Container ${CONTAINER_NAME} already exists, trying port $((CURRENT_PORT + 1))...${NC}"
+            CURRENT_PORT=$((CURRENT_PORT + 1))
+            continue
+        fi
+
+        echo -e "${GREEN}Starting opencode web UI...${NC}"
+        echo -e "${YELLOW}Project: ${PROJECT_DIR}${NC}"
+        echo -e "${YELLOW}Port: ${CURRENT_PORT}${NC}"
+        echo -e "${YELLOW}Bind: ${BIND_ADDR}${NC}"
+        echo ""
+
+        # Try to start the container
+        # We run detached first to capture the container ID and handle port conflicts
+        DOCKER_OUTPUT=$(docker run -d \
+            --name "${CONTAINER_NAME}" \
+            -p "${BIND_ADDR}:${CURRENT_PORT}:${CURRENT_PORT}" \
+            -v "${PROJECT_DIR}:/workspace" \
+            -v "${CONFIG_DIR}:/root/.config/opencode" \
+            -v "${DATA_DIR}:/root/.local/share/opencode" \
+            -v "${HOME}/.gitconfig:/root/.gitconfig:ro" \
+            -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+            -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
+            -w /workspace \
+            "${ENV_VARS[@]}" \
+            "${IMAGE_NAME}" \
+            opencode web --hostname 0.0.0.0 --port "${CURRENT_PORT}" "${OPENCODE_ARGS[@]}" 2>&1) && {
+            # Success - container started
+            echo -e "${GREEN}Web UI starting at: http://${BIND_ADDR}:${CURRENT_PORT}${NC}"
+            echo ""
+
+            if [[ "${WEB_DETACHED}" == "true" ]]; then
+                echo -e "${GREEN}Running in detached mode.${NC}"
+                echo ""
+                echo "To view logs:"
+                echo "  docker logs -f ${CONTAINER_NAME}"
+                echo ""
+                echo "To stop:"
+                echo "  docker stop ${CONTAINER_NAME}"
+                exit 0
+            else
+                # Foreground mode: follow logs and stop on Ctrl+C
+                cleanup_web_container() {
+                    echo ""
+                    echo -e "${YELLOW}Stopping web server...${NC}"
+                    docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+                    docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+                    echo -e "${GREEN}Stopped.${NC}"
+                    exit 0
+                }
+                trap cleanup_web_container SIGINT SIGTERM
+
+                echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
+                echo ""
+
+                # Follow logs until container stops or user interrupts
+                docker logs -f "${CONTAINER_NAME}" 2>&1 || true
+
+                # Container exited on its own, clean up
+                docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+                exit 0
+            fi
+        }
+
+        # Check if it was a port conflict
+        if echo "${DOCKER_OUTPUT}" | grep -qi "port is already allocated\|address already in use\|bind: address already in use"; then
+            echo -e "${YELLOW}Port ${CURRENT_PORT} is busy, trying port $((CURRENT_PORT + 1))...${NC}"
+            # Clean up the failed container if it was created
+            docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+            CURRENT_PORT=$((CURRENT_PORT + 1))
+            continue
+        fi
+
+        # Some other error occurred
+        echo -e "${RED}Failed to start web server:${NC}" >&2
+        echo "${DOCKER_OUTPUT}" >&2
+        # Clean up the failed container if it was created
+        docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+        exit 1
+    done
+
+    echo -e "${RED}Could not find a free port after ${MAX_PORT_ATTEMPTS} attempts (tried ${WEB_PORT}-${CURRENT_PORT})${NC}" >&2
+    exit 1
 fi
 
 # Check if Docker is available

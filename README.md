@@ -74,6 +74,38 @@ jail opencode --help
 jail opencode "fix the bug in main.go"
 ```
 
+### Web UI
+
+Start the opencode web interface with `jail web`:
+
+```bash
+# Start web UI on localhost:7500 (foreground, Ctrl+C to stop)
+jail web
+
+# Start on a specific port
+jail web --port 8080
+
+# Expose to network (not just localhost)
+jail web --public
+
+# Run in background (detached mode)
+jail web --detached
+
+# Combine options
+jail web --public --detached --port 9000
+
+# Pass arguments to opencode web
+jail web -- --print-logs --log-level DEBUG
+```
+
+**Port Selection**: The web server prefers port 7500 by default. If that port is busy (e.g., another `jail web` instance is running), it automatically tries the next port until it finds a free one.
+
+**Multiple Instances**: You can run multiple `jail web` instances simultaneously for different projects. Each instance gets a unique container name based on the project directory and port.
+
+**Foreground vs Detached**:
+- **Foreground (default)**: The terminal stays attached to the container. Press Ctrl+C to stop.
+- **Detached (`--detached`)**: The container runs in the background. Use `docker stop <container-name>` to stop it.
+
 ## How It Works
 
 1. **First run in a project**: If no `Dockerfile.jail` exists in the current directory, the default one is copied there
