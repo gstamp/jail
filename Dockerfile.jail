@@ -188,6 +188,10 @@ RUN curl -fsSL https://opencode.ai/install | bash
 # Add opencode to PATH
 ENV PATH="/root/.opencode/bin:$PATH"
 
+# Create non-root home directory structure for running as host UID/GID
+RUN mkdir -p /home/jail/.config /home/jail/.local/share && \
+    chmod -R 777 /home/jail
+
 # Set working directory
 WORKDIR /workspace
 

@@ -18,6 +18,9 @@ PROJECT_DIR="$(pwd)"
 CONFIG_DIR="${HOME}/.config/opencode"
 DATA_DIR="${HOME}/.local/share/opencode"
 JAIL_PERMISSIONS="${SCRIPT_DIR}/jail-permissions.json"
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+CONTAINER_HOME="/home/jail"
 
 # Generate project-specific image name based on project directory hash
 PROJECT_HASH=$(echo -n "${PROJECT_DIR}" | md5sum | cut -c1-12)
@@ -297,13 +300,16 @@ if [[ "${1:-}" == "web" ]]; then
         # Try to start the container
         # We run detached first to capture the container ID and handle port conflicts
         DOCKER_OUTPUT=$(docker run -d \
+            --rm \
             --name "${CONTAINER_NAME}" \
+            --user "${HOST_UID}:${HOST_GID}" \
             -p "${BIND_ADDR}:${CURRENT_PORT}:${CURRENT_PORT}" \
             -v "${PROJECT_DIR}:/workspace" \
-            -v "${CONFIG_DIR}:/root/.config/opencode" \
-            -v "${DATA_DIR}:/root/.local/share/opencode" \
-            -v "${HOME}/.gitconfig:/root/.gitconfig:ro" \
+            -v "${CONFIG_DIR}:${CONTAINER_HOME}/.config/opencode" \
+            -v "${DATA_DIR}:${CONTAINER_HOME}/.local/share/opencode" \
+            -v "${HOME}/.gitconfig:${CONTAINER_HOME}/.gitconfig:ro" \
             -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+            -e "HOME=${CONTAINER_HOME}" \
             -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
             -w /workspace \
             "${ENV_VARS[@]}" \
@@ -464,12 +470,14 @@ echo -e "${YELLOW}Command: ${CMD[*]}${NC}"
 echo ""
 
 docker run --rm -it \
+    --user "${HOST_UID}:${HOST_GID}" \
     --network host \
     -v "${PROJECT_DIR}:/workspace" \
-    -v "${CONFIG_DIR}:/root/.config/opencode" \
-    -v "${DATA_DIR}:/root/.local/share/opencode" \
-    -v "${HOME}/.gitconfig:/root/.gitconfig:ro" \
+    -v "${CONFIG_DIR}:${CONTAINER_HOME}/.config/opencode" \
+    -v "${DATA_DIR}:${CONTAINER_HOME}/.local/share/opencode" \
+    -v "${HOME}/.gitconfig:${CONTAINER_HOME}/.gitconfig:ro" \
     -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+    -e "HOME=${CONTAINER_HOME}" \
     -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
     -w /workspace \
     "${ENV_VARS[@]}" \
