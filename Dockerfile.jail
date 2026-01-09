@@ -46,6 +46,12 @@ RUN curl -fsSL https://bun.sh/install | bash -s "bun-v1.1.42" && \
 ENV PATH="/usr/local/bun/bin:$PATH"
 
 # -----------------------------------------------------------------------------
+# mgrep (semantic grep - requires authentication on host)
+# -----------------------------------------------------------------------------
+# Install mgrep globally via npm (Bun includes npm compatibility)
+RUN bun install -g @anthropic-ai/claude-code @mixedbread-ai/mgrep
+
+# -----------------------------------------------------------------------------
 # Go Development
 # -----------------------------------------------------------------------------
 # ENV GO_VERSION=1.25.5

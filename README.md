@@ -122,6 +122,14 @@ jail web -- --print-logs --log-level DEBUG
 git -c safe.directory=/workspace add .
 ```
 
+**mgrep Support**: If [mgrep](https://github.com/mixedbread-ai/mgrep) (semantic grep) is initialized on your host system (`~/.mgrep` exists), the jail automatically mounts your mgrep authentication and configuration. To set up mgrep:
+
+1. Install mgrep on your host: `npm install -g @mixedbread-ai/mgrep`
+2. Log in: `mgrep login`
+3. The jail will automatically detect and mount your credentials
+
+Alternatively, set the `MXBAI_API_KEY` environment variable to authenticate without browser login.
+
 ## Customizing the Dockerfile
 
 The `Dockerfile.jail` in your project directory can be customized to include project-specific dependencies:
@@ -151,12 +159,17 @@ WORKDIR /workspace
 CMD ["/bin/bash"]
 ```
 
-After modifying `Dockerfile.jail`, rebuild the image:
+After modifying `Dockerfile.jail`, rebuild the image by running `jail` again (it auto-rebuilds when the Dockerfile changes).
+
+### Cleaning Up Images
+
+To remove all jail Docker images (useful for freeing disk space or forcing a fresh rebuild):
 
 ```bash
-docker rmi opencode-jail
-jail
+jail --cleanup
 ```
+
+This will list all `opencode-jail-*` images and prompt for confirmation before removing them.
 
 ## Environment Variables
 
@@ -167,6 +180,7 @@ The following environment variables are passed through to the container if set:
 | `OPENROUTER_API_KEY` | API key for OpenRouter |
 | `OPENROUTER_MODEL` | Model to use with OpenRouter |
 | `JIRA_API_TOKEN` | Jira API token for integrations |
+| `MXBAI_API_KEY` | Mixedbread API key for mgrep (semantic grep) |
 
 ## Mounted Files
 
@@ -179,6 +193,8 @@ The following host files are mounted into the sandbox container:
 | `~/.local/share/opencode` | `/home/jail/.local/share/opencode` | Read/Write | opencode conversation history |
 | `~/.gitconfig` | `/home/jail/.gitconfig` | Read-Only | Global git configuration (user, email, aliases) |
 | `jail-permissions.json` | `/tmp/jail-permissions.json` | Read-Only | Permissive permissions override |
+| `~/.mgrep` | `/home/jail/.mgrep` | Read/Write | mgrep authentication (if exists) |
+| `~/.config/mgrep` | `/home/jail/.config/mgrep` | Read-Only | mgrep configuration (if exists) |
 
 ## License
 

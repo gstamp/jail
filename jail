@@ -18,6 +18,8 @@ PROJECT_DIR="$(pwd)"
 CONFIG_DIR="${HOME}/.config/opencode"
 DATA_DIR="${HOME}/.local/share/opencode"
 JAIL_PERMISSIONS="${SCRIPT_DIR}/jail-permissions.json"
+MGREP_AUTH_DIR="${HOME}/.mgrep"
+MGREP_CONFIG_DIR="${HOME}/.config/mgrep"
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 CONTAINER_HOME="/home/jail"
@@ -269,6 +271,20 @@ if [[ "${1:-}" == "web" ]]; then
     if [[ -n "${JIRA_API_TOKEN:-}" ]]; then
         ENV_VARS+=(-e "JIRA_API_TOKEN=${JIRA_API_TOKEN}")
     fi
+    if [[ -n "${MXBAI_API_KEY:-}" ]]; then
+        ENV_VARS+=(-e "MXBAI_API_KEY=${MXBAI_API_KEY}")
+    fi
+
+    # Collect mgrep mounts if initialized on host
+    MGREP_MOUNTS=()
+    if [[ -d "${MGREP_AUTH_DIR}" ]]; then
+        mkdir -p "${MGREP_AUTH_DIR}"
+        MGREP_MOUNTS+=(-v "${MGREP_AUTH_DIR}:${CONTAINER_HOME}/.mgrep")
+    fi
+    if [[ -d "${MGREP_CONFIG_DIR}" ]]; then
+        mkdir -p "${MGREP_CONFIG_DIR}"
+        MGREP_MOUNTS+=(-v "${MGREP_CONFIG_DIR}:${CONTAINER_HOME}/.config/mgrep:ro")
+    fi
 
     # Determine bind address for Docker port publishing
     if [[ "${WEB_PUBLIC}" == "true" ]]; then
@@ -309,6 +325,7 @@ if [[ "${1:-}" == "web" ]]; then
             -v "${DATA_DIR}:${CONTAINER_HOME}/.local/share/opencode" \
             -v "${HOME}/.gitconfig:${CONTAINER_HOME}/.gitconfig:ro" \
             -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+            "${MGREP_MOUNTS[@]}" \
             -e "HOME=${CONTAINER_HOME}" \
             -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
             -w /workspace \
@@ -454,6 +471,20 @@ fi
 if [[ -n "${JIRA_API_TOKEN:-}" ]]; then
     ENV_VARS+=(-e "JIRA_API_TOKEN=${JIRA_API_TOKEN}")
 fi
+if [[ -n "${MXBAI_API_KEY:-}" ]]; then
+    ENV_VARS+=(-e "MXBAI_API_KEY=${MXBAI_API_KEY}")
+fi
+
+# Collect mgrep mounts if initialized on host
+MGREP_MOUNTS=()
+if [[ -d "${MGREP_AUTH_DIR}" ]]; then
+    mkdir -p "${MGREP_AUTH_DIR}"
+    MGREP_MOUNTS+=(-v "${MGREP_AUTH_DIR}:${CONTAINER_HOME}/.mgrep")
+fi
+if [[ -d "${MGREP_CONFIG_DIR}" ]]; then
+    mkdir -p "${MGREP_CONFIG_DIR}"
+    MGREP_MOUNTS+=(-v "${MGREP_CONFIG_DIR}:${CONTAINER_HOME}/.config/mgrep:ro")
+fi
 
 # Determine command to run (default to opencode if no arguments)
 if [[ $# -eq 0 ]]; then
@@ -477,6 +508,7 @@ docker run --rm -it \
     -v "${DATA_DIR}:${CONTAINER_HOME}/.local/share/opencode" \
     -v "${HOME}/.gitconfig:${CONTAINER_HOME}/.gitconfig:ro" \
     -v "${JAIL_PERMISSIONS}:/tmp/jail-permissions.json:ro" \
+    "${MGREP_MOUNTS[@]}" \
     -e "HOME=${CONTAINER_HOME}" \
     -e "OPENCODE_CONFIG=/tmp/jail-permissions.json" \
     -w /workspace \
