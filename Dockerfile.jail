@@ -39,19 +39,21 @@ RUN apt-get update && \
 # # Install TypeScript globally
 # RUN npm install -g typescript ts-node
 #
-# # Install Bun
-# RUN curl -fsSL https://bun.sh/install | bash
-# ENV PATH="/root/.bun/bin:$PATH"
+# Install Bun globally (accessible to all users)
+RUN curl -fsSL https://bun.sh/install | bash -s "bun-v1.1.42" && \
+    mv /root/.bun /usr/local/bun && \
+    ln -s /usr/local/bun/bin/bun /usr/local/bin/bun
+ENV PATH="/usr/local/bun/bin:$PATH"
 
 # -----------------------------------------------------------------------------
 # Go Development
 # -----------------------------------------------------------------------------
 # ENV GO_VERSION=1.25.5
 # RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" | tar -C /usr/local -xzf -
-# ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
-# ENV GOPATH="/root/go"
+# ENV PATH="/usr/local/go/bin:/usr/local/go-tools/bin:$PATH"
+# ENV GOPATH="/usr/local/go-tools"
 #
-# # Install standard Go tools
+# # Install standard Go tools (globally accessible)
 # RUN go install golang.org/x/tools/gopls@latest && \
 #     go install github.com/go-delve/delve/cmd/dlv@latest && \
 #     go install golang.org/x/tools/cmd/goimports@latest && \
@@ -64,8 +66,12 @@ RUN apt-get update && \
 # -----------------------------------------------------------------------------
 # Rust Development
 # -----------------------------------------------------------------------------
-# RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-# ENV PATH="/root/.cargo/bin:$PATH"
+# RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+#     mv /root/.cargo /usr/local/cargo && \
+#     mv /root/.rustup /usr/local/rustup
+# ENV CARGO_HOME="/usr/local/cargo"
+# ENV RUSTUP_HOME="/usr/local/rustup"
+# ENV PATH="/usr/local/cargo/bin:$PATH"
 #
 # # Install common Rust tools
 # RUN rustup component add rustfmt clippy && \
@@ -76,9 +82,11 @@ RUN apt-get update && \
 # -----------------------------------------------------------------------------
 # Note: Uncomment python3 packages in the apt-get section above, then uncomment below:
 #
-# # Install uv (fast Python package manager)
-# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-# ENV PATH="/root/.local/bin:$PATH"
+# # Install uv (fast Python package manager) globally
+# RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+#     mv /root/.local/bin/uv /usr/local/bin/uv && \
+#     mv /root/.local/bin/uvx /usr/local/bin/uvx
+# ENV PATH="/usr/local/bin:$PATH"
 #
 # # Install common Python tools
 # RUN pip3 install --break-system-packages \
@@ -97,20 +105,22 @@ RUN apt-get update && \
 # -----------------------------------------------------------------------------
 # mise (polyglot runtime manager - manages Node, Python, Go, etc.)
 # -----------------------------------------------------------------------------
-# RUN curl https://mise.run | sh
-# ENV PATH="/root/.local/bin:$PATH"
+# RUN curl https://mise.run | sh && \
+#     mv /root/.local/bin/mise /usr/local/bin/mise
+# ENV PATH="/usr/local/bin:$PATH"
 # # Example: mise install node@lts python@3.12 go@latest
 
 # -----------------------------------------------------------------------------
 # nvm (Node Version Manager)
 # -----------------------------------------------------------------------------
-# ENV NVM_DIR="/root/.nvm"
-# RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
+# ENV NVM_DIR="/usr/local/nvm"
+# RUN mkdir -p "$NVM_DIR" && \
+#     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
 #     . "$NVM_DIR/nvm.sh" && \
 #     nvm install --lts
-# # Add to bashrc for interactive shells
-# RUN echo 'export NVM_DIR="/root/.nvm"' >> /root/.bashrc && \
-#     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /root/.bashrc
+# # Make nvm accessible in interactive shells
+# RUN echo 'export NVM_DIR="/usr/local/nvm"' >> /etc/bash.bashrc && \
+#     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /etc/bash.bashrc
 
 # -----------------------------------------------------------------------------
 # just (command runner, like make but better)
@@ -134,8 +144,10 @@ RUN apt-get update && \
 # -----------------------------------------------------------------------------
 # fzf (fuzzy finder)
 # -----------------------------------------------------------------------------
-# RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf && \
-#     /root/.fzf/install --all
+# RUN git clone --depth 1 https://github.com/junegunn/fzf.git /usr/local/fzf && \
+#     /usr/local/fzf/install --bin && \
+#     ln -s /usr/local/fzf/bin/fzf /usr/local/bin/fzf
+# ENV PATH="/usr/local/fzf/bin:$PATH"
 
 # -----------------------------------------------------------------------------
 # bat (cat with syntax highlighting)
@@ -182,11 +194,13 @@ RUN apt-get update && \
 # OPENCODE INSTALLATION
 # =============================================================================
 
-# Install opencode via curl script
-RUN curl -fsSL https://opencode.ai/install | bash
+# Install opencode globally (accessible to all users)
+RUN curl -fsSL https://opencode.ai/install | bash && \
+    mv /root/.opencode /usr/local/opencode && \
+    ln -s /usr/local/opencode/bin/opencode /usr/local/bin/opencode
 
 # Add opencode to PATH
-ENV PATH="/root/.opencode/bin:$PATH"
+ENV PATH="/usr/local/opencode/bin:$PATH"
 
 # Create non-root home directory structure for running as host UID/GID
 RUN mkdir -p /home/jail/.config /home/jail/.local/share && \
