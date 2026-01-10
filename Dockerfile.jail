@@ -25,20 +25,6 @@ RUN apt-get update && \
 # -----------------------------------------------------------------------------
 # TypeScript/JavaScript Development (Node.js, Bun, pnpm, yarn)
 # -----------------------------------------------------------------------------
-# # Install Node.js (LTS) - nodesource script adds repo and runs apt-get update
-# RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-#     apt-get install -y nodejs && \
-#     rm -rf /var/lib/apt/lists/*
-#
-# # Install pnpm
-# RUN npm install -g pnpm
-#
-# # Install yarn
-# RUN npm install -g yarn
-#
-# # Install TypeScript globally
-# RUN npm install -g typescript ts-node
-#
 # Install Bun globally (accessible to all users)
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v1.1.42" && \
     mv /root/.bun /usr/local/bun && \
@@ -48,8 +34,12 @@ ENV PATH="/usr/local/bun/bin:$PATH"
 # -----------------------------------------------------------------------------
 # mgrep (semantic grep - requires authentication on host)
 # -----------------------------------------------------------------------------
-# Install mgrep globally via npm (Bun includes npm compatibility)
-RUN bun install -g @anthropic-ai/claude-code @mixedbread-ai/mgrep
+# Install Node.js for mgrep runtime
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+# Install mgrep globally via npm
+RUN npm install -g @mixedbread/mgrep
 
 # -----------------------------------------------------------------------------
 # Go Development
