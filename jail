@@ -28,6 +28,9 @@ CONTAINER_HOME="/home/jail"
 PROJECT_HASH=$(echo -n "${PROJECT_DIR}" | md5sum | cut -c1-12)
 IMAGE_NAME="opencode-jail-${PROJECT_HASH}"
 
+# Generate unique store ID for mgrep isolation per session
+SESSION_ID="${IMAGE_NAME}-$(date +%s)-$(od -A n -t x1 -N 1 /dev/urandom | tr -d ' ' | tr -dc '0-9a-f' | head -c 4)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -274,6 +277,8 @@ if [[ "${1:-}" == "web" ]]; then
     if [[ -n "${MXBAI_API_KEY:-}" ]]; then
         ENV_VARS+=(-e "MXBAI_API_KEY=${MXBAI_API_KEY}")
     fi
+    ENV_VARS+=(-e "MXBAI_STORE=${SESSION_ID}")
+    ENV_VARS+=(-e "MXBAI_STORE=${SESSION_ID}")
 
     # Collect mgrep mounts if initialized on host
     MGREP_MOUNTS=()
@@ -311,6 +316,7 @@ if [[ "${1:-}" == "web" ]]; then
         echo -e "${YELLOW}Project: ${PROJECT_DIR}${NC}"
         echo -e "${YELLOW}Port: ${CURRENT_PORT}${NC}"
         echo -e "${YELLOW}Bind: ${BIND_ADDR}${NC}"
+        echo -e "${YELLOW}mgrep store: ${SESSION_ID}${NC}"
         echo ""
 
         # Try to start the container
@@ -497,6 +503,7 @@ fi
 echo -e "${GREEN}Starting Docker sandbox...${NC}"
 echo -e "${YELLOW}Project: ${PROJECT_DIR}${NC}"
 echo -e "${YELLOW}Config: ${CONFIG_DIR} (persistent)${NC}"
+echo -e "${YELLOW}mgrep store: ${SESSION_ID}${NC}"
 echo -e "${YELLOW}Command: ${CMD[*]}${NC}"
 echo ""
 

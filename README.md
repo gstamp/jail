@@ -128,6 +128,8 @@ git -c safe.directory=/workspace add .
 2. Log in: `mgrep login`
 3. The jail will automatically detect and mount your credentials
 
+**Session Isolation**: Each jail session gets a unique mgrep store (e.g., `opencode-jail-abc123def456-123456`) to prevent search result mixing between concurrent sessions. Store names are displayed when starting a session.
+
 Alternatively, set the `MXBAI_API_KEY` environment variable to authenticate without browser login.
 
 ## Customizing the Dockerfile
