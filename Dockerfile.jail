@@ -93,9 +93,112 @@ RUN npm install -g @mixedbread/mgrep
 #     pytest \
 #     ipython
 
-# =============================================================================
-# UTILITY TOOLS
-# Uncomment the tools you need
+# -----------------------------------------------------------------------------
+# LSP SERVERS
+# Language Server Protocol servers for IDE support
+# Uncomment the servers you need
+#
+# VERSION VERIFICATION:
+# - For npm packages: Check latest version at https://www.npmjs.com/package/<package-name>
+# - For GitHub releases: Check latest release at https://github.com/<org>/<repo>/releases
+# - For rust-analyzer: Check https://github.com/rust-lang/rust-analyzer/releases
+#
+# To verify installations after uncommenting, run the verification command shown for each server.
+# Example: docker build . --build-arg; docker run <image> rust-analyzer --version
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Rust LSP Server (rust-analyzer)
+# Installation: Via rustup component (recommended) or GitHub releases
+# Verification: rust-analyzer --version
+# Latest releases: https://github.com/rust-lang/rust-analyzer/releases
+# -----------------------------------------------------------------------------
+# Install rust-analyzer via rustup (if Rust toolchain is installed)
+# RUN rustup component add rust-analyzer
+# ENV PATH="/usr/local/cargo/bin:$PATH"
+
+# OR install rust-analyzer from GitHub releases (verify latest version at: https://github.com/rust-lang/rust-analyzer/releases)
+# ENV RUST_ANALYZER_VERSION=$(curl -s "https://api.github.com/repos/rust-lang/rust-analyzer/releases/latest" | grep -Po '"tag_name": "K[^"]*' | cut -d'"' -f4)
+# RUN curl -Lo rust-analyzer.tar.gz "https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.tar.gz" && \
+#     tar xzf rust-analyzer.tar.gz && \
+#     mv rust-analyzer-x86_64-unknown-linux-gnu/rust-analyzer /usr/local/bin/ && \
+#     rm -rf rust-analyzer.tar.gz rust-analyzer-x86_64-unknown-linux-gnu
+
+# -----------------------------------------------------------------------------
+# Python LSP Server (pyright)
+# Installation: npm install -g pyright
+# Verification: pyright --version
+# Latest version: https://www.npmjs.com/package/pyright
+# -----------------------------------------------------------------------------
+# RUN npm install -g pyright
+# ENV PATH="/usr/local/bin:$PATH"
+
+# Alternative: basedpyright (more features)
+# RUN npm install -g basedpyright
+
+# -----------------------------------------------------------------------------
+# TypeScript/JavaScript LSP Server (typescript-language-server)
+# Installation: npm install -g typescript-language-server typescript
+# Verification: typescript-language-server --version
+# Latest version: https://www.npmjs.com/package/typescript-language-server
+# -----------------------------------------------------------------------------
+# RUN npm install -g typescript-language-server typescript
+# ENV PATH="/usr/local/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# Lua LSP Server (lua-language-server)
+# Installation: Download from GitHub releases
+# Verification: lua-language-server --version
+# Latest version: https://github.com/LuaLS/lua-language-server/releases
+# -----------------------------------------------------------------------------
+# ENV LUA_LS_VERSION=$(curl -s "https://api.github.com/repos/LuaLS/lua-language-server/releases/latest" | grep -Po '"tag_name": "K[^"]*' | cut -d'"' -f4)
+# RUN curl -Lo lua-language-server.tar.gz "https://github.com/LuaLS/lua-language-server/releases/latest/download/lua-language-server-${LUA_LS_VERSION}-linux-x64.tar.gz" && \
+#     tar xzf lua-language-server.tar.gz && \
+#     mv lua-language-server/bin/lua-language-server /usr/local/bin/ && \
+#     rm -rf lua-language-server.tar.gz lua-language-server
+
+# -----------------------------------------------------------------------------
+# Bash LSP Server (bash-language-server)
+# Installation: npm install -g bash-language-server
+# Verification: bash-language-server --version
+# Latest version: https://www.npmjs.com/package/bash-language-server
+# Note: Requires shellcheck for linting (install via apt-get above)
+# -----------------------------------------------------------------------------
+# RUN npm install -g bash-language-server
+# ENV PATH="/usr/local/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# YAML LSP Server (yaml-language-server)
+# Installation: npm install -g yaml-language-server
+# Verification: yaml-language-server --version
+# Latest version: https://www.npmjs.com/package/yaml-language-server
+# -----------------------------------------------------------------------------
+# RUN npm install -g yaml-language-server
+# ENV PATH="/usr/local/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# VS Code Language Servers (HTML/CSS/JSON/ESLint)
+# Installation: npm install -g @zed-industries/vscode-langservers-extracted
+# Verification: vscode-html-language-server --version
+# Latest version: https://www.npmjs.com/package/@zed-industries/vscode-langservers-extracted
+# Provides: vscode-html-language-server, vscode-css-language-server, vscode-json-language-server, vscode-eslint-language-server
+# -----------------------------------------------------------------------------
+# RUN npm install -g @zed-industries/vscode-langservers-extracted
+# ENV PATH="/usr/local/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# Docker LSP Server (docker-language-server)
+# Installation: Download from GitHub releases
+# Verification: docker-langserver --version
+# Latest version: https://github.com/docker/docker-language-server/releases
+# -----------------------------------------------------------------------------
+# ENV DOCKER_LS_VERSION=$(curl -s "https://api.github.com/repos/docker/docker-language-server/releases/latest" | grep -Po '"tag_name": "K[^"]*' | cut -d'"' -f4)
+# RUN curl -Lo docker-language-server.tar.gz "https://github.com/docker/docker-language-server/releases/latest/download/docker-language-server-${DOCKER_LS_VERSION}-x86_64-unknown-linux-musl.tar.gz" && \
+#     tar xzf docker-language-server.tar.gz && \
+#     mv docker-language-server/docker-language-server /usr/local/bin/ && \
+#     rm -rf docker-language-server.tar.gz docker-language-server
+
+
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -207,4 +310,3 @@ WORKDIR /workspace
 
 # Default command (will be overridden by jail script)
 CMD ["/bin/bash"]
-
