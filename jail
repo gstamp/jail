@@ -507,7 +507,13 @@ echo -e "${YELLOW}mgrep store: ${SESSION_ID}${NC}"
 echo -e "${YELLOW}Command: ${CMD[*]}${NC}"
 echo ""
 
-docker run --rm -it \
+if [[ -t 0 ]]; then
+    DOCKER_FLAGS="-it"
+else
+    DOCKER_FLAGS="-i"
+fi
+
+docker run --rm ${DOCKER_FLAGS} \
     --user "${HOST_UID}:${HOST_GID}" \
     --network host \
     -v "${PROJECT_DIR}:/workspace" \
