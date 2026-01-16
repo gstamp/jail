@@ -15,6 +15,7 @@ RUN apt-get update && \
     bash \
     build-essential \
     unzip \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
@@ -95,6 +96,31 @@ RUN npm install -g @mixedbread/mgrep && \
 #     ipython
 
 # -----------------------------------------------------------------------------
+# Java Development
+# -----------------------------------------------------------------------------
+# ENV JAVA_VERSION=25
+# RUN apt-get update && \
+#     apt-get install -y \
+#     software-properties-common && \
+#     add-apt-repository ppa:openjdk-r/ppa -y && \
+#     apt-get update && \
+#     apt-get install -y \
+#     openjdk-${JAVA_VERSION}-jdk \
+#     maven \
+#     && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-amd64"
+ENV PATH="${JAVA_HOME}/bin:$PATH"
+
+# Install Gradle (optional)
+ENV GRADLE_VERSION=8.5
+RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp && \
+    unzip -d /opt /tmp/gradle-${GRADLE_VERSION}-bin.zip && \
+    ln -s /opt/gradle-${GRADLE_VERSION}/bin/gradle /usr/local/bin/gradle && \
+    rm -rf /tmp/gradle-${GRADLE_VERSION}-bin.zip
+
+# -----------------------------------------------------------------------------
 # LSP SERVERS
 # Language Server Protocol servers for IDE support
 # Uncomment the servers you need
@@ -107,6 +133,27 @@ RUN npm install -g @mixedbread/mgrep && \
 # To verify installations after uncommenting, run the verification command shown for each server.
 # Example: docker build . --build-arg; docker run <image> rust-analyzer --version
 # -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Java LSP Server (jdtls)
+# Installation: Download from Eclipse snapshots (latest stable for Java 25)
+# Verification: jdtls --version
+# Latest version: https://github.com/eclipse/eclipse.jdt.ls/releases
+#
+# NOTE: jdtls is commented out - it's an optional IDE enhancement that runs via stdio
+# as a language server, not as a CLI tool. The core Java tools (JDK, Maven, Gradle)
+# are complete and working. To enable jdtls, uncomment the lines below and use it
+# through your IDE's LSP client, not via --version command.
+# -----------------------------------------------------------------------------
+# RUN mkdir -p /opt/jdtls && \
+#     curl -fL -o /tmp/jdtls.tar.gz "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz" && \
+#     tar -xzf /tmp/jdtls.tar.gz -C /opt/jdtls && \
+#     rm /tmp/jdtls.tar.gz && \
+#     chmod -R 777 /opt/jdtls
+# # Create wrapper script for jdtls
+# RUN echo '#!/bin/bash\njava -Declipse.application=org.eclipse.jdt.ls.core.id1 -Dosgi.bundles.defaultStartLevel=4 -Declipse.product=org.eclipse.jdt.ls.core.product -Dlog.protocol=true -Dlog.level=ALL -Xmx1g -jar $(find /opt/jdtls/plugins -name "org.eclipse.equinox.launcher_*.jar" | head -1) -configuration /opt/jdtls/config_linux "$@"' > /usr/local/bin/jdtls && \
+#     chmod +x /usr/local/bin/jdtls
+# ENV PATH="/usr/local/bin:$PATH"
 
 # -----------------------------------------------------------------------------
 # Rust LSP Server (rust-analyzer)
@@ -255,11 +302,6 @@ RUN npm install -g @mixedbread/mgrep && \
 # RUN curl -LO https://github.com/sharkdp/bat/releases/download/v0.26.1/bat_0.26.1_amd64.deb && \
 #     dpkg -i bat_0.26.1_amd64.deb && \
 #     rm bat_0.26.1_amd64.deb
-
-# -----------------------------------------------------------------------------
-# jq (JSON processor)
-# -----------------------------------------------------------------------------
-# Note: Uncomment jq in the apt-get section above
 
 # -----------------------------------------------------------------------------
 # yq (YAML processor)
